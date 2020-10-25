@@ -9,6 +9,7 @@ import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import org.slf4j.event.Level
+import ru.senin.kotlin.net.HttpOptions
 import ru.senin.kotlin.net.Message
 import ru.senin.kotlin.net.UserInfo
 
@@ -31,10 +32,10 @@ class HttpChatServer(host: String, port: Int) : NettyChatServer(host, port) {
         }
 
         routing {
-            get("/v1/health") {
+            get(HttpOptions.healthCheckPath) {
                 call.respondText("OK", contentType = ContentType.Text.Plain)
             }
-            post("/v1/message") {
+            post(HttpOptions.path) {
                 val message = call.receive<Message>()
                 listener?.messageReceived(message.user, message.text) ?: throw NotConnectedListener()
             }
