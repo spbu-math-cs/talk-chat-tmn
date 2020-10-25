@@ -38,6 +38,7 @@ class HttpChatServer(host: String, port: Int) : NettyChatServer(host, port) {
             post(HttpOptions.path) {
                 val message = call.receive<Message>()
                 listener?.messageReceived(message.user, message.text) ?: throw NotConnectedListener()
+                call.respond(mapOf("status" to "ok"))
             }
             install(StatusPages) {
                 exception<IllegalArgumentException> {
@@ -50,8 +51,5 @@ class HttpChatServer(host: String, port: Int) : NettyChatServer(host, port) {
         }
     }
 }
-
-class NotConnectedListener : IllegalStateException("Not connected listener!")
-
 // Send test message using curl:
 // curl -v -X POST http://localhost:8080/v1/message -H "Content-type: application/json" -d '{ "user":"ivanov", "text":"Hello!"}'
