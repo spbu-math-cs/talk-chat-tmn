@@ -2,6 +2,7 @@ package ru.senin.kotlin.net.server
 
 import io.ktor.network.selector.*
 import io.ktor.network.sockets.*
+import io.ktor.utils.io.streams.*
 import kotlinx.coroutines.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -19,11 +20,18 @@ class UdpChatServer(private val host: String, private val port: Int) : BaseChatS
             }
             serverJob = launch {
                 val datagramSocket = aSocket(ActorSelectorManager(Dispatchers.IO)).udp().bind(InetSocketAddress(host, port))
+                println("Socket bound: ${datagramSocket.localAddress}")
                 while (isActive) {
                     val datagram = datagramSocket.receive()
+                    val reader = datagram.packet.readerUTF8()
+
                     launch {
                         try {
-                            // TODO: implement datagram processing
+                            while (true) {
+                                val line = reader.readText()
+                                println("${datagram.address}: $line")
+                            }
+                            // DONE: implement datagram processing
                         }
                         catch (e: CancellationException) {
                             log.debug( "Canceled during message processing: ${e.message}", e)
