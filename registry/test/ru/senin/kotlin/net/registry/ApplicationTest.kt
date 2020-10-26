@@ -11,10 +11,8 @@ import org.junit.jupiter.api.Test
 import ru.senin.kotlin.net.Protocol
 import ru.senin.kotlin.net.UserAddress
 import ru.senin.kotlin.net.UserInfo
-import kotlin.test.Ignore
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.fail
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.test.*
 
 fun Application.testModule() {
 
@@ -49,16 +47,29 @@ class ApplicationTest {
     @Test
     fun `register user`() = withRegisteredTestUser { }
 
-    @Ignore
     @Test
     fun `list users`() = withRegisteredTestUser {
-        TODO()
+        handleRequest(HttpMethod.Get, "/v1/users").apply {
+            assertEquals(HttpStatusCode.OK, response.status())
+            val content = response.content
+            assertNotNull(content)
+            val users: ConcurrentHashMap<String, UserAddress> = objectMapper.readValue(content)
+            assertEquals(1, users.size)
+            assertNotNull(users[testUserName])
+            assertEquals(testHttpAddress, users[testUserName])
+        }
     }
 
-    @Ignore
     @Test
     fun `delete user`() = withRegisteredTestUser {
-        TODO()
+        handleRequest(HttpMethod.Delete, "/v1/users/$testUserName").apply {
+            assertEquals(HttpStatusCode.OK, response.status())
+            val content = response.content
+            assertNotNull(content)
+            val info: HashMap<String, String> = objectMapper.readValue(content)
+            assertNotNull(info["status"])
+            assertEquals("ok", info["status"])
+        }
     }
 
     private fun withRegisteredTestUser(block: TestApplicationEngine.() -> Unit) {
@@ -71,7 +82,7 @@ class ApplicationTest {
             }.apply {
                 assertEquals(HttpStatusCode.OK, response.status())
                 val content = response.content ?: fail("No response content")
-                val info = objectMapper.readValue<HashMap<String,String>>(content)
+                val info = objectMapper.readValue<HashMap<String, String>>(content)
 
                 assertNotNull(info["status"])
                 assertEquals("ok", info["status"])
