@@ -2,6 +2,7 @@ package ru.senin.kotlin.net.registry
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.sun.jna.platform.win32.Netapi32Util
 import io.ktor.application.*
 import io.ktor.config.*
 import io.ktor.http.*
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Test
 import ru.senin.kotlin.net.Protocol
 import ru.senin.kotlin.net.UserAddress
 import ru.senin.kotlin.net.UserInfo
+import java.net.http.HttpRequest
 import kotlin.test.Ignore
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -47,7 +49,9 @@ class ApplicationTest {
 
     @Ignore
     @Test
-    fun `register user`() = withRegisteredTestUser { }
+    fun `register user`() = withRegisteredTestUser {
+
+    }
 
     @Ignore
     @Test
