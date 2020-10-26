@@ -24,7 +24,6 @@ class UdpChatServer(private val host: String, private val port: Int) : BaseChatS
             }
             serverJob = launch {
                 val datagramSocket = aSocket(ActorSelectorManager(Dispatchers.IO)).udp().bind(InetSocketAddress(host, port))
-                println("Socket bound: ${datagramSocket.localAddress}")
                 while (isActive) {
                     val datagram = datagramSocket.receive()
                     val reader = datagram.packet.readerUTF8()
