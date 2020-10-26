@@ -83,7 +83,8 @@ fun main(args: Array<String>) {
         val host = parameters.host
         val port = parameters.port
 
-
+        validateHost(host) ?: throw IllegalArgumentException("Illegal hostname or IP '$host'")
+        if (!validatePort(port)) throw IllegalArgumentException("Illegal port '$port'")
 
         val name = parameters.name
         checkUserName(name) ?: throw IllegalArgumentException("Illegal user name '$name'")
