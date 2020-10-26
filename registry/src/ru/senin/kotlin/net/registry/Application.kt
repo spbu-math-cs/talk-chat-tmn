@@ -76,7 +76,11 @@ fun Application.module(testing: Boolean = false) {
             TODO()
         }
 
-        // TODO: add DELETE /v1/users/{name}
+        delete("/v1/users/{user}") {
+            val userName = call.parameters["user"]
+            Registry.users.remove(userName)
+            call.respond(HttpStatusCode.OK, mapOf("status" to "ok"))
+        }
     }
 }
 
