@@ -1,6 +1,7 @@
 package ru.senin.kotlin.net.registry
 
 import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.ktor.application.*
 import io.ktor.features.*
 import io.ktor.http.*
@@ -68,7 +69,7 @@ fun Application.module(testing: Boolean = false) {
         }
 
         get("/v1/users") {
-            TODO()
+            call.respond(HttpStatusCode.OK, Registry.users)
         }
 
         put("/v1/users/{name}") {
