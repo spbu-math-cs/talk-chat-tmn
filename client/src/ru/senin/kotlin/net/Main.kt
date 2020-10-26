@@ -70,6 +70,8 @@ fun validateHost(host: String) =
     """^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"""
         .toRegex().find(host)
 
+fun validatePort(port: Int) = port in 0..65535
+
 fun main(args: Array<String>) {
     try {
         parameters = Parameters().parse(args)
