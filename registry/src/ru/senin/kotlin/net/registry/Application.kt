@@ -60,7 +60,8 @@ fun Application.module(testing: Boolean = false) {
         post("/v1/users") {
             val user = call.receive<UserInfo>()
             val userAddresses = Registry.users[user.name]
-            checkUserName(user.name) ?: throw IllegalUserNameException()
+            if (checkUserName(user.name))
+                throw IllegalUserNameException()
             if (userAddresses != null) {
                 throw UserAlreadyRegisteredException()
             }
@@ -73,7 +74,12 @@ fun Application.module(testing: Boolean = false) {
         }
 
         put("/v1/users/{name}") {
-            TODO()
+            val userName = call.parameters["name"] as String
+            val userAddress = call.receive<UserAddress>()
+            if (checkUserName(userName))
+                throw IllegalUserNameException()
+            Registry.users[userName] = userAddress
+            call.respond(mapOf("status" to "ok"))
         }
 
         delete("/v1/users/{user}") {
