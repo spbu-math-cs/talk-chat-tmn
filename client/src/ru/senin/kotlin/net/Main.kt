@@ -64,6 +64,12 @@ object ClientFactory : ChatClientFactory {
     override fun supportedProtocols(): Set<Protocol> = setOf( Protocol.HTTP, Protocol.WEBSOCKET, Protocol.UDP )
 }
 
+fun validateHost(host: String) =
+    """^(([a-zA-Z]|[a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z]|[A-Za-z][A-Za-z0-9-]*[A-Za-z0-9])$"""
+        .toRegex().find(host) ?:
+    """^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"""
+        .toRegex().find(host)
+
 fun main(args: Array<String>) {
     try {
         parameters = Parameters().parse(args)
@@ -75,7 +81,7 @@ fun main(args: Array<String>) {
         val host = parameters.host
         val port = parameters.port
 
-        // TODO: validate host and port
+
 
         val name = parameters.name
         checkUserName(name) ?: throw IllegalArgumentException("Illegal user name '$name'")
