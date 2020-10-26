@@ -1,11 +1,15 @@
 package ru.senin.kotlin.net.server
 
+import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.module.kotlin.readValue
 import io.ktor.network.selector.*
 import io.ktor.network.sockets.*
+import io.ktor.utils.io.core.*
 import io.ktor.utils.io.streams.*
 import kotlinx.coroutines.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import ru.senin.kotlin.net.Message
 import java.net.InetSocketAddress
 
 class UdpChatServer(private val host: String, private val port: Int) : BaseChatServer() {
@@ -27,10 +31,8 @@ class UdpChatServer(private val host: String, private val port: Int) : BaseChatS
 
                     launch {
                         try {
-                            while (true) {
-                                val line = reader.readText()
-                                println("${datagram.address}: $line")
-                            }
+                            val content: Message = objectMapper.readValue(reader)
+                            listener?.messageReceived(content.user, content.text) ?: throw NotConnectedListener()
                             // DONE: implement datagram processing
                         }
                         catch (e: CancellationException) {
