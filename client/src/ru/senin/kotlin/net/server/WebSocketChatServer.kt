@@ -2,7 +2,6 @@ package ru.senin.kotlin.net.server
 
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
-import io.ktor.request.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
 import ru.senin.kotlin.net.Message
@@ -22,7 +21,8 @@ class WebSocketChatServer(host: String, port: Int) : NettyChatServer(host, port)
 
         routing {
             webSocket(WebSocketOptions.path) {
-                val content: Message = objectMapper.readValue(call.receiveText())
+                val received = incoming.receive() as Frame.Text
+                val content: Message = objectMapper.readValue(received.readText())
                 listener?.messageReceived(content.user, content.text) ?: throw NotConnectedListener()
             }
         }

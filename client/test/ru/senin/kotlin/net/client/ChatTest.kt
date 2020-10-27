@@ -1,10 +1,10 @@
 package ru.senin.kotlin.net.client
 
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.DynamicTest.dynamicTest
 import org.junit.jupiter.api.TestFactory
-import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import ru.senin.kotlin.net.*
 import ru.senin.kotlin.net.server.ChatMessageListener
@@ -60,7 +60,8 @@ class ChatTest {
                     server.stop()
                     serversJob.join()
                 }
-                assertEquals(messages, listener.history.map { it.second })
+                assertTrue(listener.history.map { it.second }.containsAll(messages))
+//                assertEquals(messages, listener.history.map {it.second})
                 assertTrue(listener.history.all { it.first == userName })
             }
         }.toList()

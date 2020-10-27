@@ -29,4 +29,4 @@ data class UserInfo(val name: String, val address: UserAddress)
 
 data class Message(val user: String, val text: String)
 
-fun checkUserName(name: String) = name.all {it in '0'..'9' || it in 'a'..'z' || it in 'A'..'Z'}
+fun checkUserName(name: String) = """^[a-zA-Z0-9-_.]+$""".toRegex().find(name)

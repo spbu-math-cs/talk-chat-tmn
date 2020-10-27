@@ -1,6 +1,7 @@
 package ru.senin.kotlin.net.registry
 
 import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.ktor.application.*
 import io.ktor.features.*
 import io.ktor.http.*
@@ -40,6 +41,7 @@ fun Application.module(testing: Boolean = false) {
             enable(SerializationFeature.INDENT_OUTPUT)
         }
     }
+
     install(StatusPages) {
         exception<IllegalArgumentException> { cause ->
             call.respond(HttpStatusCode.BadRequest, cause.message ?: "invalid argument")
@@ -59,8 +61,7 @@ fun Application.module(testing: Boolean = false) {
         post("/v1/users") {
             val user = call.receive<UserInfo>()
             val userAddresses = Registry.users[user.name]
-            if (checkUserName(user.name))
-                throw IllegalUserNameException()
+            checkUserName(user.name) ?: throw IllegalUserNameException()
             if (userAddresses != null) {
                 throw UserAlreadyRegisteredException()
             }
@@ -69,19 +70,22 @@ fun Application.module(testing: Boolean = false) {
         }
 
         get("/v1/users") {
-            TODO()
+            call.respond(HttpStatusCode.OK, Registry.users)
         }
 
         put("/v1/users/{name}") {
             val userName = call.parameters["name"] as String
             val userAddress = call.receive<UserAddress>()
-            if (checkUserName(userName))
-                throw IllegalUserNameException()
+            checkUserName(userName) ?: throw IllegalUserNameException()
             Registry.users[userName] = userAddress
             call.respond(mapOf("status" to "ok"))
         }
 
-        // TODO: add DELETE /v1/users/{name}
+        delete("/v1/users/{user}") {
+            val userName = call.parameters["user"]
+            Registry.users.remove(userName)
+            call.respond(HttpStatusCode.OK, mapOf("status" to "ok"))
+        }
     }
 }
 
