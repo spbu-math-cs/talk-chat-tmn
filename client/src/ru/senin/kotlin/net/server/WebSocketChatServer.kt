@@ -21,9 +21,15 @@ class WebSocketChatServer(host: String, port: Int) : NettyChatServer(host, port)
 
         routing {
             webSocket(WebSocketOptions.path) {
-                val received = incoming.receive() as Frame.Text
-                val content: Message = objectMapper.readValue(received.readText())
-                listener?.messageReceived(content.user, content.text) ?: throw NotConnectedListener()
+                for (frame in incoming) {
+                    when (frame) {
+                        is Frame.Text -> {
+                            val content: Message = objectMapper.readValue(frame.readText())
+                            listener?.messageReceived(content.user, content.text) ?: throw NotConnectedListener()
+                        }
+                        else -> { }
+                    }
+                }
             }
         }
     }
