@@ -47,19 +47,7 @@ class ApplicationTest {
     }
 
     @Test
-    fun `register user`(): Unit = withTestApplication({ testModule() }) {
-        handleRequest(HttpMethod.Post, "/v1/users") {
-            addHeader("Content-type", "application/json")
-            setBody(objectMapper.writeValueAsString(userData))
-        }.apply {
-            assertEquals(HttpStatusCode.OK, response.status())
-            val content = response.content ?: fail("No response content")
-            val info = objectMapper.readValue<HashMap<String, String>>(content)
-
-            assertNotNull(info["status"])
-            assertEquals("ok", info["status"])
-        }
-    }
+    fun `register user`(): Unit = withRegisteredTestUser { }
 
     @Test
     fun `registered user`() = withRegisteredTestUser {
@@ -82,7 +70,7 @@ class ApplicationTest {
     }
 
     @Test
-    fun `change user`() : Unit = withRegisteredTestUser {
+    fun `change user`(): Unit = withRegisteredTestUser {
         handleRequest(HttpMethod.Put, "/v1/users/$testUserName") {
             addHeader("Content-type", "application/json")
             setBody(objectMapper.writeValueAsString(testUpdAddress))
