@@ -29,8 +29,11 @@ fun Application.testModule() {
 class ApplicationTest {
     private val objectMapper = jacksonObjectMapper()
     private val testUserName = "pupkin"
+    private val badUserName = "кек288"
     private val testHttpAddress = UserAddress(Protocol.HTTP, "127.0.0.1", 9999)
+    private val testUpdAddress = UserAddress(Protocol.UDP, "127.0.0.1", 3002)
     private val userData = UserInfo(testUserName, testHttpAddress)
+    private val badData = UserInfo(badUserName, testHttpAddress)
 
     @BeforeEach
     fun clearRegistry() {
@@ -47,13 +50,68 @@ class ApplicationTest {
         }
     }
 
-    @Ignore
     @Test
-    fun `register user`() = withRegisteredTestUser {
+    fun `register user`(): Unit = withTestApplication({ testModule() }) {
+        handleRequest(HttpMethod.Post, "/v1/users") {
+            addHeader("Content-type", "application/json")
+            setBody(objectMapper.writeValueAsString(userData))
+        }.apply {
+            assertEquals(HttpStatusCode.OK, response.status())
+            val content = response.content ?: fail("No response content")
+            val info = objectMapper.readValue<HashMap<String, String>>(content)
 
+            assertNotNull(info["status"])
+            assertEquals("ok", info["status"])
+        }
+    }
+    
+    @Test
+    fun `registered user`() = withRegisteredTestUser {
+        handleRequest(HttpMethod.Post, "/v1/users") {
+            addHeader("Content-type", "application/json")
+            setBody(objectMapper.writeValueAsString(userData))
+        }.apply {
+            assertEquals(HttpStatusCode.Conflict, response.status())
+        }
     }
 
-    @Ignore
+    @Test
+    fun `bad username register`(): Unit = withTestApplication({ testModule() }) {
+        handleRequest(HttpMethod.Post, "/v1/users") {
+            addHeader("Content-type", "application/json")
+            setBody(objectMapper.writeValueAsString(badData))
+        }.apply {
+            assertEquals(HttpStatusCode.BadRequest, response.status())
+        }
+    }
+
+    @Test
+    fun `change user`() : Unit = withRegisteredTestUser {
+        handleRequest(HttpMethod.Put, "/v1/users/$testUserName") {
+            addHeader("Content-type", "application/json")
+            setBody(objectMapper.writeValueAsString(testUpdAddress))
+        }.apply {
+            assertEquals(HttpStatusCode.OK, response.status())
+            val content = response.content ?: fail("No response content")
+            val info = objectMapper.readValue<HashMap<String, String>>(content)
+
+            assertNotNull(info["status"])
+            assertEquals("ok", info["status"])
+            assertEquals(Registry.users[testUserName], testUpdAddress)
+        }
+    }
+
+    @Test
+    fun `bad username change`(): Unit = withRegisteredTestUser {
+        handleRequest(HttpMethod.Put, "/v1/users/$badUserName") {
+            addHeader("Content-type", "application/json")
+            setBody(objectMapper.writeValueAsString(testUpdAddress))
+        }.apply {
+            assertEquals(HttpStatusCode.BadRequest, response.status())
+        }
+    }
+
+
     @Test
     fun `list users`() = withRegisteredTestUser {
         TODO()
