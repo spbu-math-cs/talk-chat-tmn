@@ -1,11 +1,12 @@
 package ru.senin.kotlin.net.client
 
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.DynamicTest.dynamicTest
 import org.junit.jupiter.api.TestFactory
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.*
 import ru.senin.kotlin.net.*
 import ru.senin.kotlin.net.server.ChatMessageListener
 import kotlin.concurrent.thread
@@ -22,7 +23,8 @@ class ChatTest {
     private val listener = TestListener()
     private val userName = "loopa"
     private val localhost = "127.0.0.1"
-    private val port = 8080
+    private val portA = 8080
+    private val portB = 8080
 
     @BeforeEach
     fun clearHistory() {
@@ -44,24 +46,28 @@ class ChatTest {
 
         return protocols.map { protocol ->
             dynamicTest("Test $protocol chat") {
-                val server = ServerFactory.create(protocol, localhost, port)
-                val client = ClientFactory.create(protocol, localhost, port)
-
+                listener.history.clear()
+                val server = ServerFactory.create(protocol, localhost, portA)
+                val client = ClientFactory.create(protocol, localhost, portB)
                 server.setMessageListener(listener)
 
                 val serversJob = thread {
                     server.start()
                 }
                 try {
-                    messages.forEach {
-                        client.sendMessage(Message(userName, it))
+                    runBlocking {
+                        delay(100)
+                        messages.forEach {
+                            client.sendMessage(Message(userName, it))
+                        }
+                        delay(100)
                     }
                 } finally {
                     server.stop()
+                    client.close()
                     serversJob.join()
                 }
-                assertTrue(listener.history.map { it.second }.containsAll(messages))
-//                assertEquals(messages, listener.history.map {it.second})
+                assertEquals(messages, listener.history.map {it.second})
                 assertTrue(listener.history.all { it.first == userName })
             }
         }.toList()
