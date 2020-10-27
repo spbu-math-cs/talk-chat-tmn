@@ -12,7 +12,6 @@ class UdpChatClient(private val host: String, private val port: Int) : BaseChatC
     companion object {
         private val socket: BoundDatagramSocket =
                 aSocket(ActorSelectorManager(Dispatchers.IO)).udp().bind(InetSocketAddress(0))
-                //TODO("Create UPD socket. Use InetSocketAddress(0) to send from random free port")
     }
 
     override fun sendMessage(message: Message) {
