@@ -45,7 +45,9 @@ class ApplicationTest {
 
     @Ignore
     @Test
-    fun `register user`() = withRegisteredTestUser { }
+    fun `register user`() = withRegisteredTestUser {
+
+    }
 
     @Test
     fun `list users`() = withRegisteredTestUser {

@@ -41,6 +41,7 @@ fun Application.module(testing: Boolean = false) {
             enable(SerializationFeature.INDENT_OUTPUT)
         }
     }
+
     install(StatusPages) {
         exception<IllegalArgumentException> { cause ->
             call.respond(HttpStatusCode.BadRequest, cause.message ?: "invalid argument")
@@ -73,7 +74,11 @@ fun Application.module(testing: Boolean = false) {
         }
 
         put("/v1/users/{name}") {
-            TODO()
+            val userName = call.parameters["name"] as String
+            val userAddress = call.receive<UserAddress>()
+            checkUserName(userName) ?: throw IllegalUserNameException()
+            Registry.users[userName] = userAddress
+            call.respond(mapOf("status" to "ok"))
         }
 
         delete("/v1/users/{user}") {
