@@ -33,7 +33,7 @@ class HttpChatServer(host: String, port: Int) : NettyChatServer(host, port) {
 
         routing {
             get(HttpOptions.healthCheckPath) {
-                call.respondText("OK", contentType = ContentType.Text.Plain)
+                call.respond(mapOf("status" to "ok"))
             }
             post(HttpOptions.path) {
                 val message = call.receive<Message>()
