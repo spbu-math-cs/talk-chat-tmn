@@ -1,7 +1,6 @@
 package ru.senin.kotlin.net.registry
 
 import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.ktor.application.*
 import io.ktor.features.*
 import io.ktor.http.*
@@ -11,15 +10,56 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.server.netty.*
 import org.slf4j.event.Level
+import ru.senin.kotlin.net.Protocol
 import ru.senin.kotlin.net.UserAddress
 import ru.senin.kotlin.net.UserInfo
 import ru.senin.kotlin.net.checkUserName
+import ru.senin.kotlin.net.registry.checker.client.*
+import java.lang.Thread.sleep
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
 
+class RegistryListener : CheckListener {
+    override fun startCheck(user: String) {
+        Registry.users.remove(user)
+    }
+
+    override fun checkReceived(user: UserInfo) {
+        println("Checked ${user.name}")
+        Registry.users[user.name] = user.address
+    }
+
+}
+
+class CheckerFactory : ClientCheckerFactory {
+    override fun create(user: UserInfo): ClientChecker =
+        when (user.address.protocol) {
+            Protocol.HTTP -> HttpClientChecker(user)
+            Protocol.UDP -> UdpClientChecker(user)
+            Protocol.WEBSOCKET -> WebSocketClientChecker(user)
+        }
+
+    override fun supportedProtocols(): Set<Protocol> = setOf(Protocol.HTTP, Protocol.UDP, Protocol.WEBSOCKET)
+}
+
 fun main(args: Array<String>) {
     thread {
-        // TODO: periodically check users and remove unreachable ones
+        val listener = RegistryListener()
+        while (true) {
+            sleep(1000 * 60 * 2)
+            println("Start requests...")
+            try {
+                Registry.users.toList().forEach { (userName, userAddress) ->
+                    val checker =
+                        CheckerFactory().create(UserInfo(userName, userAddress))
+                    checker.setCheckListener(listener)
+                    checker.check()
+                }
+            } catch (e: Exception) {
+                println(e.message)
+            }
+            println("Finish requests...")
+        }
     }
     EngineMain.main(args)
 }
@@ -89,5 +129,5 @@ fun Application.module(testing: Boolean = false) {
     }
 }
 
-class UserAlreadyRegisteredException: RuntimeException("User already registered")
-class IllegalUserNameException: RuntimeException("Illegal user name")
+class UserAlreadyRegisteredException : RuntimeException("User already registered")
+class IllegalUserNameException : RuntimeException("Illegal user name")

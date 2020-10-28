@@ -1,7 +1,10 @@
 package ru.senin.kotlin.net
 
+import kotlinx.coroutines.*
 import ru.senin.kotlin.net.client.ChatClient
 import ru.senin.kotlin.net.server.ChatMessageListener
+import java.lang.Thread.sleep
+import kotlin.concurrent.thread
 
 class Chat(
     private val name: String,
@@ -11,7 +14,7 @@ class Chat(
     private var exit = false
     private var selectedUser: String? = null
     private val clients = mutableMapOf<String, ChatClient>()
-    private var users =  mutableMapOf<String, UserAddress>()
+    private var users = mutableMapOf<String, UserAddress>()
 
     private fun prompt(): String {
         val prompt = "  to [${selectedUser ?: "<not selected>"}] <<< "
@@ -76,8 +79,7 @@ class Chat(
         }
         try {
             client.sendMessage(Message(name, text))
-        }
-        catch(e: Exception) {
+        } catch (e: Exception) {
             println("Error! ${e.message}")
         }
     }
@@ -86,6 +88,15 @@ class Chat(
         var input: String
         printWelcome()
         updateUsersList()
+
+        val registryChecker = GlobalScope.launch {
+            while (!exit) {
+                delay(1000 * 60 * 2)
+                println("\nUpdate:")
+                updateUsersList()
+            }
+        }
+
         while (!exit) {
             input = prompt()
             when (input.substringBefore(" ")) {
@@ -95,9 +106,14 @@ class Chat(
                     val userName = input.split("""\s+""".toRegex()).drop(1).joinToString(" ")
                     selectUser(userName)
                 }
-                "" -> {}
+                "" -> {
+                }
                 else -> message(input)
             }
+        }
+
+        runBlocking {
+            registryChecker.cancelAndJoin()
         }
     }
 
