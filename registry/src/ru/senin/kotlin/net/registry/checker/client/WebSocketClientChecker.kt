@@ -7,27 +7,26 @@ import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 import ru.senin.kotlin.net.Protocol
 import ru.senin.kotlin.net.UserAddress
+import ru.senin.kotlin.net.UserInfo
 import ru.senin.kotlin.net.WebSocketOptions
 
 class WebSocketClientChecker(
-    private val userName: String,
-    private val host: String,
-    private val port: Int
+    private val user: UserInfo
 ) : BaseClientChecker() {
     private val client = HttpClient(CIO).config { install(WebSockets) }
 
     override fun check() {
-        listener?.startCheck(userName) ?: throw NotConnectedListener()
+        listener?.startCheck(user.name) ?: throw NotConnectedListener()
         var checked = true
         runBlocking {
             try {
-                client.ws(HttpMethod.Get, host, port, WebSocketOptions.path) {}
+                client.ws(HttpMethod.Get, user.address.host, user.address.port, WebSocketOptions.path) {}
             } catch (e: Exception) {
                 checked = false
             }
         }
         if (checked)
-            listener?.checkReceived(userName, UserAddress(Protocol.WEBSOCKET, host, port))
+            listener?.checkReceived(user)
     }
 
 }

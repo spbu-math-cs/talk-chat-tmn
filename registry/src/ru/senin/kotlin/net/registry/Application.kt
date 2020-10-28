@@ -24,19 +24,19 @@ class RegistryListener : CheckListener {
         Registry.users.remove(user)
     }
 
-    override fun checkReceived(user: String, userAddress: UserAddress) {
-        println("Checked $user")
-        Registry.users[user] = userAddress
+    override fun checkReceived(user: UserInfo) {
+        println("Checked ${user.name}")
+        Registry.users[user.name] = user.address
     }
 
 }
 
 class CheckerFactory : ClientCheckerFactory {
-    override fun create(userName: String, protocol: Protocol, host: String, port: Int): ClientChecker =
-        when (protocol) {
-            Protocol.HTTP -> HttpClientChecker(userName, host, port)
-            Protocol.UDP -> UdpClientChecker(userName, host, port)
-            Protocol.WEBSOCKET -> WebSocketClientChecker(userName, host, port)
+    override fun create(user: UserInfo): ClientChecker =
+        when (user.address.protocol) {
+            Protocol.HTTP -> HttpClientChecker(user)
+            Protocol.UDP -> UdpClientChecker(user)
+            Protocol.WEBSOCKET -> WebSocketClientChecker(user)
         }
 
     override fun supportedProtocols(): Set<Protocol> = setOf(Protocol.HTTP, Protocol.UDP, Protocol.WEBSOCKET)
@@ -46,19 +46,19 @@ fun main(args: Array<String>) {
     thread {
         val listener = RegistryListener()
         while (true) {
-            sleep(1000 * 15)
-            println ("Start requests...")
+            sleep(1000 * 60 * 2)
+            println("Start requests...")
             try {
                 Registry.users.toList().forEach { (userName, userAddress) ->
                     val checker =
-                        CheckerFactory().create(userName, userAddress.protocol, userAddress.host, userAddress.port)
+                        CheckerFactory().create(UserInfo(userName, userAddress))
                     checker.setCheckListener(listener)
                     checker.check()
                 }
-            } catch (e : Exception) {
+            } catch (e: Exception) {
                 println(e.message)
             }
-            println ("Finish requests...")
+            println("Finish requests...")
         }
     }
     EngineMain.main(args)

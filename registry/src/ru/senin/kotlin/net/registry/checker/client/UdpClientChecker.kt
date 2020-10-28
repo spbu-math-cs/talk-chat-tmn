@@ -5,41 +5,46 @@ import io.ktor.network.sockets.*
 import io.ktor.utils.io.core.*
 import io.ktor.utils.io.streams.*
 import kotlinx.coroutines.*
-import ru.senin.kotlin.net.Protocol
-import ru.senin.kotlin.net.UserAddress
+import ru.senin.kotlin.net.UserInfo
 import java.net.InetSocketAddress
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.random.Random
 
 class UdpClientChecker(
-    private val userName: String,
-    private val host: String,
-    private val port: Int
+    private val user: UserInfo
 ) : BaseClientChecker() {
 
     companion object {
         private val socket: BoundDatagramSocket =
             aSocket(ActorSelectorManager(Dispatchers.IO)).udp().bind(InetSocketAddress(0))
-        private val usersId = ConcurrentHashMap<String, String>()
+        private val usersId = ConcurrentHashMap<String, UserInfo>()
     }
 
     private var job: Job? = null
 
+    private fun getNextChar(): Char {
+        val key = Random.nextInt(0, 26 + 10)
+        return if (key < 26)
+            'a'.plus(key)
+        else
+            (key - 26).toString()[0]
+    }
+
     private fun getRandomId(): String {
-        TODO()
+        return (0..16).map { getNextChar() }.joinToString("")
     }
 
     private fun startJob() {
         runBlocking {
             job = GlobalScope.launch {
                 while (isActive) {
-                    val datagram = socket.receive()
+                    val datagram = socket.incoming.receive()
                     val reader = datagram.packet.readerUTF8()
                     launch {
                         try {
                             val id = reader.readText()
                             usersId[id]?.let {
-                                listener?.checkReceived(it, UserAddress(Protocol.UDP, host, port))
-                                    ?: throw NotConnectedListener()
+                                listener?.checkReceived(it) ?: throw NotConnectedListener()
                             }
                         } catch (e: CancellationException) {
                             throw IllegalStateException("Canceled during message processing: ${e.message}", e)
@@ -53,15 +58,14 @@ class UdpClientChecker(
     }
 
     override fun check() {
-        listener?.startCheck(userName) ?: NotConnectedListener()
+        listener?.startCheck(user.name) ?: NotConnectedListener()
         val id = getRandomId()
-        usersId[id] = userName
+        usersId[id] = user
         runBlocking {
             job ?: startJob()
-
             socket.outgoing.send(Datagram(buildPacket {
-                writeText(id)
-            }, InetSocketAddress(host, port)))
+                writeText("id-checker $id")
+            }, InetSocketAddress(user.address.host, user.address.port)))
         }
     }
 

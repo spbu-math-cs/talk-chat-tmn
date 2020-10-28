@@ -1,11 +1,9 @@
 package ru.senin.kotlin.net.server
 
-import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.ktor.network.selector.*
 import io.ktor.network.sockets.*
 import io.ktor.utils.io.core.*
-import io.ktor.utils.io.streams.*
 import kotlinx.coroutines.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -13,7 +11,7 @@ import ru.senin.kotlin.net.Message
 import java.net.InetSocketAddress
 
 class UdpChatServer(private val host: String, private val port: Int) : BaseChatServer() {
-    private var serverJob : Job? = null
+    private var serverJob: Job? = null
 
     override fun start() {
         runBlocking {
@@ -23,22 +21,26 @@ class UdpChatServer(private val host: String, private val port: Int) : BaseChatS
                 }
             }
             serverJob = launch {
-                val datagramSocket = aSocket(ActorSelectorManager(Dispatchers.IO)).udp().bind(InetSocketAddress(host, port))
+                val datagramSocket =
+                    aSocket(ActorSelectorManager(Dispatchers.IO)).udp().bind(InetSocketAddress(host, port))
                 while (isActive) {
-                    val datagram = datagramSocket.receive()
-                    val reader = datagram.packet.readerUTF8()
+                    val datagram = datagramSocket.incoming.receive()
+                    val text = datagram.packet.readText()
 
                     launch {
                         try {
-                            val content: Message = objectMapper.readValue(reader)
-                            listener?.messageReceived(content.user, content.text) ?: throw NotConnectedListener()
-                            // DONE: implement datagram processing
-                        }
-                        catch (e: CancellationException) {
-                            log.debug( "Canceled during message processing: ${e.message}", e)
-                        }
-                        catch (e: Throwable) {
-                            log.error( "Error during message processing: ${e.message}", e)
+                            if (text.startsWith("id-checker")) {
+                                datagramSocket.outgoing.send(Datagram(buildPacket {
+                                    writeText(text.substringAfter(" "))
+                                }, datagram.address))
+                            } else {
+                                val content: Message = objectMapper.readValue(text)
+                                listener?.messageReceived(content.user, content.text) ?: throw NotConnectedListener()
+                            }
+                        } catch (e: CancellationException) {
+                            log.debug("Canceled during message processing: ${e.message}", e)
+                        } catch (e: Throwable) {
+                            log.error("Error during message processing: ${e.message}", e)
                         }
                     }
                 }
