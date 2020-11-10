@@ -7,6 +7,7 @@ import io.ktor.utils.io.streams.*
 import kotlinx.coroutines.*
 import ru.senin.kotlin.net.UserInfo
 import java.net.InetSocketAddress
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
 
@@ -23,16 +24,8 @@ class UdpClientChecker(
 
     private var job: Job? = null
 
-    private fun getNextChar(): Char {
-        val key = Random.nextInt(0, 26 + 10)
-        return if (key < 26)
-            'a'.plus(key)
-        else
-            (key - 26).toString()[0]
-    }
-
     private fun getRandomId(): String {
-        return (0..16).map { getNextChar() }.joinToString("")
+        return UUID.randomUUID().toString()
     }
 
     private fun startJob() {
