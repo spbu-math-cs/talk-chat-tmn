@@ -17,7 +17,7 @@ class WebSocketClientChecker(
     private val client = HttpClient(CIO).config { install(WebSockets) }
 
     override fun check() {
-        listener.startCheck(user.name)
+        listener.startCheck(user)
         var checked = true
         runBlocking {
             try {
@@ -28,6 +28,8 @@ class WebSocketClientChecker(
         }
         if (checked)
             listener.checkReceived(user)
+        else
+            listener.checkFailed(user)
     }
 
 }

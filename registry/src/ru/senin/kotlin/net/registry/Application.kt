@@ -20,23 +20,26 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
 
 class RegistryListener : CheckListener {
-    override fun startCheck(user: String) {
-        Registry.users.remove(user)
+    override fun startCheck(user: UserInfo) {
+        println("Start checking ${user.name}")
     }
 
     override fun checkReceived(user: UserInfo) {
         println("Checked ${user.name}")
-        Registry.users[user.name] = user.address
     }
 
+    override fun checkFailed(user: UserInfo) {
+        println("Check failed ${user.name}")
+        Registry.users.remove(user.name)
+    }
 }
 
 class CheckerFactory : ClientCheckerFactory {
     override fun create(user: UserInfo): ClientChecker =
         when (user.address.protocol) {
-            Protocol.HTTP -> HttpClientChecker(user)
-            Protocol.UDP -> UdpClientChecker(user)
-            Protocol.WEBSOCKET -> WebSocketClientChecker(user)
+            Protocol.HTTP -> HttpClientChecker(user, Registry.registryListener)
+            Protocol.UDP -> UdpClientChecker(user, Registry.registryListener)
+            Protocol.WEBSOCKET -> WebSocketClientChecker(user, Registry.registryListener)
         }
 
     override fun supportedProtocols(): Set<Protocol> = setOf(Protocol.HTTP, Protocol.UDP, Protocol.WEBSOCKET)
@@ -44,19 +47,18 @@ class CheckerFactory : ClientCheckerFactory {
 
 fun main(args: Array<String>) {
     thread {
-        val listener = RegistryListener()
         while (true) {
             sleep(1000 * 60 * 2)
             println("Start requests...")
-            try {
-                Registry.users.toList().forEach { (userName, userAddress) ->
-                    val checker =
-                        CheckerFactory().create(UserInfo(userName, userAddress))
-                    checker.setCheckListener(listener)
+            Registry.users.toList().forEach { (userName, userAddress) ->
+                val checker = CheckerFactory().create(UserInfo(userName, userAddress))
+                try {
                     checker.check()
+                } catch (e: Exception) {
+                    println(e.message)
+                } finally {
+                    checker.close()
                 }
-            } catch (e: Exception) {
-                println(e.message)
             }
             println("Finish requests...")
         }
@@ -66,6 +68,7 @@ fun main(args: Array<String>) {
 
 object Registry {
     val users = ConcurrentHashMap<String, UserAddress>()
+    val registryListener = RegistryListener()
 }
 
 @Suppress("UNUSED_PARAMETER")

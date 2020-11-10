@@ -19,8 +19,9 @@ class UdpClientChecker(
     companion object {
         private val socket: BoundDatagramSocket =
             aSocket(ActorSelectorManager(Dispatchers.IO)).udp().bind(InetSocketAddress(0))
-        private val usersId = ConcurrentHashMap<String, UserInfo>()
     }
+
+    private val usersId = ConcurrentHashMap<String, UserInfo>()
 
     private var job: Job? = null
 
@@ -40,10 +41,11 @@ class UdpClientChecker(
                             usersId[id]?.let {
                                 listener.checkReceived(it)
                             }
+                            usersId.remove(id)
                         } catch (e: CancellationException) {
                             throw IllegalStateException("Canceled during message processing: ${e.message}", e)
                         } catch (e: Throwable) {
-                            throw java.lang.IllegalStateException("Error during message processing: ${e.message}", e)
+                            throw IllegalStateException("Error during message processing: ${e.message}", e)
                         }
                     }
                 }
@@ -52,14 +54,20 @@ class UdpClientChecker(
     }
 
     override fun check() {
-        listener.startCheck(user.name)
+        listener.startCheck(user)
         val id = getRandomId()
         usersId[id] = user
         runBlocking {
             job ?: startJob()
-            socket.outgoing.send(Datagram(buildPacket {
-                writeText("id-checker $id")
-            }, InetSocketAddress(user.address.host, user.address.port)))
+            try {
+                socket.outgoing.send(Datagram(buildPacket {
+                    writeText("id-checker $id")
+                }, InetSocketAddress(user.address.host, user.address.port)))
+            } catch (e: Exception) {
+                usersId.remove(id)
+                listener.checkFailed(user)
+            }
+            delay(500) //wait to get response
         }
     }
 
@@ -67,6 +75,10 @@ class UdpClientChecker(
         runBlocking {
             job?.cancelAndJoin()
             job = null
+            usersId.forEach {
+                listener.checkFailed(it.value)
+            }
+            usersId.clear()
         }
     }
 
