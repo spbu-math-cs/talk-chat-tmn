@@ -15,5 +15,3 @@ interface ChatServer {
 interface ChatServerFactory {
     fun create(protocol: Protocol, host: String, port: Int) : ChatServer
 }
-
-class NotConnectedListener : IllegalStateException("Not connected listener!")

@@ -11,8 +11,9 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
 
 class UdpClientChecker(
-    private val user: UserInfo
-) : BaseClientChecker() {
+    private val user: UserInfo,
+    listener: CheckListener
+) : BaseClientChecker(listener) {
 
     companion object {
         private val socket: BoundDatagramSocket =
@@ -44,7 +45,7 @@ class UdpClientChecker(
                         try {
                             val id = reader.readText()
                             usersId[id]?.let {
-                                listener?.checkReceived(it) ?: throw NotConnectedListener()
+                                listener.checkReceived(it)
                             }
                         } catch (e: CancellationException) {
                             throw IllegalStateException("Canceled during message processing: ${e.message}", e)
@@ -58,7 +59,7 @@ class UdpClientChecker(
     }
 
     override fun check() {
-        listener?.startCheck(user.name) ?: NotConnectedListener()
+        listener.startCheck(user.name)
         val id = getRandomId()
         usersId[id] = user
         runBlocking {

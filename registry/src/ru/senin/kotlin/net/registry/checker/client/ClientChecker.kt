@@ -18,5 +18,3 @@ interface ClientCheckerFactory {
     fun create(user: UserInfo) : ClientChecker
     fun supportedProtocols() : Set<Protocol>
 }
-
-class NotConnectedListener : IllegalStateException("Not connected listener!")

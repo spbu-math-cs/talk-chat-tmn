@@ -25,7 +25,7 @@ class WebSocketChatServer(host: String, port: Int) : NettyChatServer(host, port)
                     when (frame) {
                         is Frame.Text -> {
                             val content: Message = objectMapper.readValue(frame.readText())
-                            listener?.messageReceived(content.user, content.text) ?: throw NotConnectedListener()
+                            listener?.messageReceived(content.user, content.text)
                         }
                         else -> { }
                     }

@@ -11,12 +11,13 @@ import ru.senin.kotlin.net.UserInfo
 import ru.senin.kotlin.net.WebSocketOptions
 
 class WebSocketClientChecker(
-    private val user: UserInfo
-) : BaseClientChecker() {
+    private val user: UserInfo,
+    listener: CheckListener
+) : BaseClientChecker(listener) {
     private val client = HttpClient(CIO).config { install(WebSockets) }
 
     override fun check() {
-        listener?.startCheck(user.name) ?: throw NotConnectedListener()
+        listener.startCheck(user.name)
         var checked = true
         runBlocking {
             try {
@@ -26,7 +27,7 @@ class WebSocketClientChecker(
             }
         }
         if (checked)
-            listener?.checkReceived(user)
+            listener.checkReceived(user)
     }
 
 }

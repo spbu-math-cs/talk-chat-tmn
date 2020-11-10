@@ -37,15 +37,12 @@ class HttpChatServer(host: String, port: Int) : NettyChatServer(host, port) {
             }
             post(HttpOptions.path) {
                 val message = call.receive<Message>()
-                listener?.messageReceived(message.user, message.text) ?: throw NotConnectedListener()
+                listener?.messageReceived(message.user, message.text)
                 call.respond(mapOf("status" to "ok"))
             }
             install(StatusPages) {
                 exception<IllegalArgumentException> {
                     call.respond(HttpStatusCode.BadRequest)
-                }
-                exception<NotConnectedListener> { cause ->
-                    call.respond(HttpStatusCode.InternalServerError, cause.message ?: "cannot listen to the message")
                 }
             }
         }

@@ -35,7 +35,7 @@ class UdpChatServer(private val host: String, private val port: Int) : BaseChatS
                                 }, datagram.address))
                             } else {
                                 val content: Message = objectMapper.readValue(text)
-                                listener?.messageReceived(content.user, content.text) ?: throw NotConnectedListener()
+                                listener?.messageReceived(content.user, content.text)
                             }
                         } catch (e: CancellationException) {
                             log.debug("Canceled during message processing: ${e.message}", e)
