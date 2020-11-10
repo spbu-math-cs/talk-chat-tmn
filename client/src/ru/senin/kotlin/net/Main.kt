@@ -4,6 +4,7 @@ import com.apurebase.arkenv.Arkenv
 import com.apurebase.arkenv.argument
 import com.apurebase.arkenv.parse
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import io.ktor.http.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import retrofit2.Retrofit
@@ -13,26 +14,26 @@ import ru.senin.kotlin.net.server.*
 import kotlin.concurrent.thread
 
 class Parameters : Arkenv() {
-    val name : String by argument("--name") {
+    val name: String by argument("--name") {
         description = "Name of user"
     }
 
-    val registryBaseUrl : String by argument("--registry"){
+    val registryBaseUrl: String by argument("--registry") {
         description = "Base URL of User Registry"
         defaultValue = { "http://localhost:8088" }
     }
 
-    val host : String by argument("--host"){
+    val host: String by argument("--host") {
         description = "Hostname or IP to listen on"
         defaultValue = { "0.0.0.0" } // 0.0.0.0 - listen on all network interfaces
     }
 
-    val port : Int by argument("--port") {
+    val port: Int by argument("--port") {
         description = "Port to listen for on"
         defaultValue = { 8080 }
     }
 
-    val protocol : Protocol by argument("--protocol") {
+    val protocol: Protocol by argument("--protocol") {
         description = "protocol (HTTP, WEBSOCKET, UDP)"
         defaultValue = { Protocol.HTTP }
         mapping = { Protocol.valueOf(it) }
@@ -40,7 +41,7 @@ class Parameters : Arkenv() {
 }
 
 val log: Logger = LoggerFactory.getLogger("main")
-lateinit var parameters : Parameters
+lateinit var parameters: Parameters
 
 object ServerFactory : ChatServerFactory {
     override fun create(protocol: Protocol, host: String, port: Int): ChatServer {
@@ -61,14 +62,10 @@ object ClientFactory : ChatClientFactory {
         }
     }
 
-    override fun supportedProtocols(): Set<Protocol> = setOf( Protocol.HTTP, Protocol.WEBSOCKET, Protocol.UDP )
+    override fun supportedProtocols(): Set<Protocol> = setOf(Protocol.HTTP, Protocol.WEBSOCKET, Protocol.UDP)
 }
 
-fun validateHost(host: String) =
-    """^(([a-zA-Z]|[a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z]|[A-Za-z][A-Za-z0-9-]*[A-Za-z0-9])$"""
-        .toRegex().find(host) ?:
-    """^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"""
-        .toRegex().find(host)
+fun validateHost(host: String) = hostIsIp(host)
 
 fun validatePort(port: Int) = port in 0..65535
 
@@ -83,7 +80,7 @@ fun main(args: Array<String>) {
         val host = parameters.host
         val port = parameters.port
 
-        validateHost(host) ?: throw IllegalArgumentException("Illegal hostname or IP '$host'")
+        if (!validateHost(host)) throw IllegalArgumentException("Illegal hostname or IP '$host'")
         if (!validatePort(port)) throw IllegalArgumentException("Illegal port '$port'")
 
         val name = parameters.name
@@ -113,14 +110,12 @@ fun main(args: Array<String>) {
 
             // start
             chat.commandLoop()
-        }
-        finally {
+        } finally {
             registry.unregister(name).execute()
             server.stop()
             serverJob.join()
         }
-    }
-    catch (e: Exception) {
+    } catch (e: Exception) {
         log.error("Error! ${e.message}", e)
         println("Error! ${e.message}")
     }
