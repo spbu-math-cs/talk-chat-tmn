@@ -65,7 +65,13 @@ object ClientFactory : ChatClientFactory {
     override fun supportedProtocols(): Set<Protocol> = setOf(Protocol.HTTP, Protocol.WEBSOCKET, Protocol.UDP)
 }
 
-fun validateHost(host: String) = hostIsIp(host)
+
+
+fun validateHost(host: String): Boolean {
+    val hostNameReg = """^(([a-zA-Z]|[a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z]|[A-Za-z][A-Za-z0-9-]*[A-Za-z0-9])$"""
+        .toRegex()
+    return hostIsIp(host) || (hostNameReg.find(host) != null)
+}
 
 fun validatePort(port: Int) = port in 0..65535
 
