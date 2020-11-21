@@ -11,10 +11,8 @@ import org.junit.jupiter.api.Test
 import ru.senin.kotlin.net.Protocol
 import ru.senin.kotlin.net.UserAddress
 import ru.senin.kotlin.net.UserInfo
-import kotlin.test.Ignore
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.fail
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.test.*
 
 fun Application.testModule() {
 
@@ -27,8 +25,11 @@ fun Application.testModule() {
 class ApplicationTest {
     private val objectMapper = jacksonObjectMapper()
     private val testUserName = "pupkin"
+    private val badUserName = "кек228"
     private val testHttpAddress = UserAddress(Protocol.HTTP, "127.0.0.1", 9999)
+    private val testUpdAddress = UserAddress(Protocol.UDP, "127.0.0.1", 3002)
     private val userData = UserInfo(testUserName, testHttpAddress)
+    private val badData = UserInfo(badUserName, testHttpAddress)
 
     @BeforeEach
     fun clearRegistry() {
@@ -45,20 +46,78 @@ class ApplicationTest {
         }
     }
 
-    @Ignore
     @Test
-    fun `register user`() = withRegisteredTestUser { }
+    fun `register user`(): Unit = withRegisteredTestUser { }
 
-    @Ignore
     @Test
-    fun `list users`() = withRegisteredTestUser {
-        TODO()
+    fun `registered user`() = withRegisteredTestUser {
+        handleRequest(HttpMethod.Post, "/v1/users") {
+            addHeader("Content-type", "application/json")
+            setBody(objectMapper.writeValueAsString(userData))
+        }.apply {
+            assertEquals(HttpStatusCode.Conflict, response.status())
+        }
     }
 
-    @Ignore
+    @Test
+    fun `bad username register`(): Unit = withTestApplication({ testModule() }) {
+        handleRequest(HttpMethod.Post, "/v1/users") {
+            addHeader("Content-type", "application/json")
+            setBody(objectMapper.writeValueAsString(badData))
+        }.apply {
+            assertEquals(HttpStatusCode.BadRequest, response.status())
+        }
+    }
+
+    @Test
+    fun `change user`(): Unit = withRegisteredTestUser {
+        handleRequest(HttpMethod.Put, "/v1/users/$testUserName") {
+            addHeader("Content-type", "application/json")
+            setBody(objectMapper.writeValueAsString(testUpdAddress))
+        }.apply {
+            assertEquals(HttpStatusCode.OK, response.status())
+            val content = response.content ?: fail("No response content")
+            val info = objectMapper.readValue<HashMap<String, String>>(content)
+
+            assertNotNull(info["status"])
+            assertEquals("ok", info["status"])
+            assertEquals(Registry.users[testUserName], testUpdAddress)
+        }
+    }
+
+    @Test
+    fun `bad username change`(): Unit = withRegisteredTestUser {
+        handleRequest(HttpMethod.Put, "/v1/users/$badUserName") {
+            addHeader("Content-type", "application/json")
+            setBody(objectMapper.writeValueAsString(testUpdAddress))
+        }.apply {
+            assertEquals(HttpStatusCode.BadRequest, response.status())
+        }
+    }
+
+    @Test
+    fun `list users`() = withRegisteredTestUser {
+        handleRequest(HttpMethod.Get, "/v1/users").apply {
+            assertEquals(HttpStatusCode.OK, response.status())
+            val content = response.content
+            assertNotNull(content)
+            val users: ConcurrentHashMap<String, UserAddress> = objectMapper.readValue(content)
+            assertEquals(1, users.size)
+            assertNotNull(users[testUserName])
+            assertEquals(testHttpAddress, users[testUserName])
+        }
+    }
+
     @Test
     fun `delete user`() = withRegisteredTestUser {
-        TODO()
+        handleRequest(HttpMethod.Delete, "/v1/users/$testUserName").apply {
+            assertEquals(HttpStatusCode.OK, response.status())
+            val content = response.content
+            assertNotNull(content)
+            val info: HashMap<String, String> = objectMapper.readValue(content)
+            assertNotNull(info["status"])
+            assertEquals("ok", info["status"])
+        }
     }
 
     private fun withRegisteredTestUser(block: TestApplicationEngine.() -> Unit) {
@@ -71,7 +130,7 @@ class ApplicationTest {
             }.apply {
                 assertEquals(HttpStatusCode.OK, response.status())
                 val content = response.content ?: fail("No response content")
-                val info = objectMapper.readValue<HashMap<String,String>>(content)
+                val info = objectMapper.readValue<HashMap<String, String>>(content)
 
                 assertNotNull(info["status"])
                 assertEquals("ok", info["status"])

@@ -4,8 +4,10 @@ import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
+import ru.senin.kotlin.net.Message
 import ru.senin.kotlin.net.WebSocketOptions
 import java.time.Duration
+import com.fasterxml.jackson.module.kotlin.*
 
 class WebSocketChatServer(host: String, port: Int) : NettyChatServer(host, port) {
 
@@ -19,7 +21,15 @@ class WebSocketChatServer(host: String, port: Int) : NettyChatServer(host, port)
 
         routing {
             webSocket(WebSocketOptions.path) {
-                // TODO: implement processing loop
+                for (frame in incoming) {
+                    when (frame) {
+                        is Frame.Text -> {
+                            val content: Message = objectMapper.readValue(frame.readText())
+                            listener?.messageReceived(content.user, content.text)
+                        }
+                        else -> { }
+                    }
+                }
             }
         }
     }

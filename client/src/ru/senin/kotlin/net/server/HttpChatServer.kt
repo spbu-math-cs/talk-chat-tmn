@@ -1,12 +1,17 @@
 package ru.senin.kotlin.net.server
 
+import com.fasterxml.jackson.databind.SerializationFeature
 import io.ktor.application.*
 import io.ktor.features.*
 import io.ktor.http.*
+import io.ktor.jackson.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import org.slf4j.event.Level
+import ru.senin.kotlin.net.HttpOptions
+import ru.senin.kotlin.net.Message
+import ru.senin.kotlin.net.UserInfo
 
 class HttpChatServer(host: String, port: Int) : NettyChatServer(host, port) {
 
@@ -21,12 +26,20 @@ class HttpChatServer(host: String, port: Int) : NettyChatServer(host, port) {
         }
 
         install(ContentNegotiation) {
-            // TODO: initialize jackson
+            jackson {
+                enable(SerializationFeature.INDENT_OUTPUT)
+            }
         }
 
         routing {
-            // TODO: add GET HttpOptions.healthCheckPath route
-            // TODO: add POST HttpOptions.path route
+            get(HttpOptions.healthCheckPath) {
+                call.respond(mapOf("status" to "ok"))
+            }
+            post(HttpOptions.path) {
+                val message = call.receive<Message>()
+                listener?.messageReceived(message.user, message.text)
+                call.respond(mapOf("status" to "ok"))
+            }
             install(StatusPages) {
                 exception<IllegalArgumentException> {
                     call.respond(HttpStatusCode.BadRequest)
@@ -35,6 +48,5 @@ class HttpChatServer(host: String, port: Int) : NettyChatServer(host, port) {
         }
     }
 }
-
 // Send test message using curl:
 // curl -v -X POST http://localhost:8080/v1/message -H "Content-type: application/json" -d '{ "user":"ivanov", "text":"Hello!"}'

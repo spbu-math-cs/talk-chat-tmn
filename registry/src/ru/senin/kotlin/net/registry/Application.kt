@@ -10,21 +10,65 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.server.netty.*
 import org.slf4j.event.Level
+import ru.senin.kotlin.net.Protocol
 import ru.senin.kotlin.net.UserAddress
 import ru.senin.kotlin.net.UserInfo
 import ru.senin.kotlin.net.checkUserName
+import ru.senin.kotlin.net.registry.checker.client.*
+import java.lang.Thread.sleep
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
 
+class RegistryListener : CheckListener {
+    override fun startCheck(user: UserInfo) {
+        println("Start checking ${user.name}")
+    }
+
+    override fun checkReceived(user: UserInfo) {
+        println("Checked ${user.name}")
+    }
+
+    override fun checkFailed(user: UserInfo) {
+        println("Check failed ${user.name}")
+        Registry.users.remove(user.name)
+    }
+}
+
+class CheckerFactory : ClientCheckerFactory {
+    override fun create(user: UserInfo): ClientChecker =
+        when (user.address.protocol) {
+            Protocol.HTTP -> HttpClientChecker(user, Registry.registryListener)
+            Protocol.UDP -> UdpClientChecker(user, Registry.registryListener)
+            Protocol.WEBSOCKET -> WebSocketClientChecker(user, Registry.registryListener)
+        }
+
+    override fun supportedProtocols(): Set<Protocol> = setOf(Protocol.HTTP, Protocol.UDP, Protocol.WEBSOCKET)
+}
+
 fun main(args: Array<String>) {
     thread {
-        // TODO: periodically check users and remove unreachable ones
+        while (true) {
+            sleep(1000 * 60 * 2)
+            println("Start requests...")
+            Registry.users.toList().forEach { (userName, userAddress) ->
+                val checker = CheckerFactory().create(UserInfo(userName, userAddress))
+                try {
+                    checker.check()
+                } catch (e: Exception) {
+                    println(e.message)
+                } finally {
+                    checker.close()
+                }
+            }
+            println("Finish requests...")
+        }
     }
     EngineMain.main(args)
 }
 
 object Registry {
     val users = ConcurrentHashMap<String, UserAddress>()
+    val registryListener = RegistryListener()
 }
 
 @Suppress("UNUSED_PARAMETER")
@@ -40,6 +84,7 @@ fun Application.module(testing: Boolean = false) {
             enable(SerializationFeature.INDENT_OUTPUT)
         }
     }
+
     install(StatusPages) {
         exception<IllegalArgumentException> { cause ->
             call.respond(HttpStatusCode.BadRequest, cause.message ?: "invalid argument")
@@ -68,16 +113,24 @@ fun Application.module(testing: Boolean = false) {
         }
 
         get("/v1/users") {
-            TODO()
+            call.respond(HttpStatusCode.OK, Registry.users)
         }
 
         put("/v1/users/{name}") {
-            TODO()
+            val userName = call.parameters["name"] as String
+            val userAddress = call.receive<UserAddress>()
+            checkUserName(userName) ?: throw IllegalUserNameException()
+            Registry.users[userName] = userAddress
+            call.respond(mapOf("status" to "ok"))
         }
 
-        // TODO: add DELETE /v1/users/{name}
+        delete("/v1/users/{user}") {
+            val userName = call.parameters["user"]
+            Registry.users.remove(userName)
+            call.respond(HttpStatusCode.OK, mapOf("status" to "ok"))
+        }
     }
 }
 
-class UserAlreadyRegisteredException: RuntimeException("User already registered")
-class IllegalUserNameException: RuntimeException("Illegal user name")
+class UserAlreadyRegisteredException : RuntimeException("User already registered")
+class IllegalUserNameException : RuntimeException("Illegal user name")
